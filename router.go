@@ -12,11 +12,12 @@ type Route[T any] struct {
 	Handler Func[T]
 	// separate methods by comma
 	// example: "GET,POST,PATCH"
-	Methods string
+	Methods      string
+	ErrorHandler func(w http.ResponseWriter, err error)
 }
 
 func NewRouter[T any](prefix string, repo T) Router[T] {
-	return Router[T]{Prefix: prefix, r: mux.NewRouter(), repo: repo}
+	return Router[T]{Prefix: prefix, r: mux.NewRouter(), repo: repo, ErrorHandler: defaultErrorHandler}
 }
 
 type Router[T any] struct {
@@ -26,27 +27,31 @@ type Router[T any] struct {
 	Routes     map[string]Route[T]
 	Prefix     string
 	Middleware []Func[T]
+	// will trickle down to routes that dont have a ErrorHandler set
+	ErrorHandler func(w http.ResponseWriter, err error)
 }
 
 func (r Router[T]) Serve(addr string) {
 	for k, v := range r.Routes {
+		if v.ErrorHandler == nil {
+			v.ErrorHandler = r.ErrorHandler
+		}
 		r.r.HandleFunc(k, deglo(v, r.repo)).Methods(strings.Split(v.Methods, ",")...)
 	}
-
-	fmt.Println(
-		"      _\n" +
-			"     | |\n" +
-			" __, | |  __\n" +
-			"/  | |/  /  \\_\n" +
-			"\\_/|/|__/\\__/\n" +
-			" /|\n" +
-			" \\|")
 
 	fmt.Printf("Serving %v routes on address %s\n", len(r.Routes), addr)
 
 	http.ListenAndServe(addr, r.r)
 }
 
+// fmt.Println(
+// 	"      _\n" +
+// 		"     | |\n" +
+// 		" __, | |  __\n" +
+// 		"/  | |/  /  \\_\n" +
+// 		"\\_/|/|__/\\__/\n" +
+// 		" /|\n" +
+// 		" \\|")
 // fmt.Println(
 // 	"	     ,dPYb,\n" +
 // 		"             IP'`Yb\n" +

@@ -14,11 +14,18 @@ type repo struct {
 func main() {
 	rep := repo{Users: []string{""}}
 	r := glo.NewRouter("", rep)
+
 	r.Routes = map[string]glo.Route[repo]{
 		"/hello": {
 			Handler: func(w http.ResponseWriter, r *http.Request, repo repo) error {
 				fmt.Fprintf(w, "Hello")
 				return nil
+			},
+			Methods: "GET",
+		},
+		"/error": {
+			Handler: func(w http.ResponseWriter, r *http.Request, repo repo) error {
+				return fmt.Errorf("asddsdd")
 			},
 			Methods: "GET",
 		},
