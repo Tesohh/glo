@@ -14,6 +14,12 @@ type repo struct {
 func main() {
 	rep := repo{Users: []string{""}}
 	r := glo.NewRouter("", rep)
+	r.Preprocessor = func(f glo.Func[repo]) glo.Func[repo] {
+		return func(w http.ResponseWriter, r *http.Request, repo repo) error {
+			fmt.Println("got a request brodie")
+			return f(w, r, repo)
+		}
+	}
 
 	r.Routes = map[string]glo.Route[repo]{
 		"/hello": {
