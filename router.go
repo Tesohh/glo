@@ -12,7 +12,10 @@ type Route[T any] struct {
 	Handler Func[T]
 	// separate methods by comma
 	// example: "GET,POST,PATCH"
-	Methods      string
+	Methods string
+	// middleware that will be added to the routers mw chain
+	// Middleware   []Func[T]
+	// Preprocessor Func[T]
 	ErrorHandler func(w http.ResponseWriter, err error)
 }
 
@@ -22,11 +25,12 @@ func NewRouter[T any](prefix string, repo T) Router[T] {
 
 type Router[T any] struct {
 	// can access all gorilla mux methods from this router
-	r          *mux.Router
-	repo       T
-	Routes     map[string]Route[T]
-	Prefix     string
-	Middleware []Func[T]
+	r            *mux.Router
+	repo         T
+	Routes       map[string]Route[T]
+	Prefix       string
+	Preprocessor MWFunc[T]
+	// Middleware   []Func[T]
 	// will trickle down to routes that dont have a ErrorHandler set
 	ErrorHandler func(w http.ResponseWriter, err error)
 }
@@ -36,7 +40,11 @@ func (r Router[T]) Serve(addr string) {
 		if v.ErrorHandler == nil {
 			v.ErrorHandler = r.ErrorHandler
 		}
-		r.r.HandleFunc(k, deglo(v, r.repo)).Methods(strings.Split(v.Methods, ",")...)
+		if r.Preprocessor != nil {
+			v.Handler = r.Preprocessor(v.Handler)
+		}
+		cleanPrefix := strings.TrimRight(r.Prefix, "/ \n")
+		r.r.HandleFunc(cleanPrefix+k, deglo(v, r.repo)).Methods(strings.Split(v.Methods, ",")...)
 	}
 
 	fmt.Printf("Serving %v routes on address %s\n", len(r.Routes), addr)
